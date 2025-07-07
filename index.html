@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chibi 3D Transformer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE',
+                        'bg-light': '#FFFFFF',
+                        'bg-dark': '#181818'
+                    }
+                }
+            },
+            darkMode: 'class'
+        }
+    </script>
+    <style>
+        .drag-over {
+            border-color: #5D5CDE !important;
+            background-color: rgba(93, 92, 222, 0.1) !important;
+        }
+        
+        .loading-animation {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        .bounce-in {
+            animation: bounceIn 0.6s ease-out;
+        }
+        
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
+</head>
+<body class="bg-bg-light dark:bg-bg-dark min-h-screen transition-colors duration-300">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 dark:text-white mb-4">
+                🎭 Chibi 3D Transformer
+            </h1>
+            <p class="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+                Transformez vos photos en adorables personnages anime chibi 3D ! 
+                L'IA analyse votre image et crée une description détaillée avant de générer le résultat.
+            </p>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-gray-800 dark:text-white mb-4">
+                📸 Uploadez votre photo
+            </h2>
+            
+            <div id="dropZone" class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 text-center cursor-pointer hover:border-primary transition-colors duration-300">
+                <div id="dropContent">
+                    <div class="text-6xl mb-4">📷</div>
+                    <p class="text-lg text-gray-600 dark:text-gray-300 mb-2">
+                        Glissez votre photo ici ou cliquez pour sélectionner
+                    </p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        Formats supportés: JPG, PNG, WebP
+                    </p>
+                </div>
+                <input type="file" id="fileInput" accept="image/*" class="hidden">
+            </div>
+            
+            <!-- Original Image Preview -->
+            <div id="originalImageContainer" class="hidden mt-6">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">Image originale:</h3>
+                <div class="flex justify-center">
+                    <img id="originalImage" class="max-w-sm max-h-64 rounded-lg shadow-md object-cover">
+                </div>
+            </div>
+            
+            <button id="transformBtn" class="hidden w-full mt-6 bg-primary hover:bg-purple-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-300 text-lg">
+                ✨ Transformer en Chibi 3D
+            </button>
+        </div>
+
+        <!-- Analysis Section -->
+        <div id="analysisSection" class="hidden bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-gray-800 dark:text-white mb-4">
+                🔍 Analyse et description chibi
+            </h2>
+            <div id="analysisContent" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                <div id="analysisLoading" class="flex items-center justify-center py-8">
+                    <div class="loading-animation">
+                        <div class="text-4xl mb-2">🤖</div>
+                        <p class="text-gray-600 dark:text-gray-300">Analyse de votre photo en cours...</p>
+                    </div>
+                </div>
+                <div id="analysisResult" class="hidden prose dark:prose-invert max-w-none"></div>
+            </div>
+        </div>
+
+        <!-- Generation Section -->
+        <div id="generationSection" class="hidden bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-gray-800 dark:text-white mb-4">
+                🎨 Génération chibi 3D
+            </h2>
+            <div id="generationContent">
+                <div id="generationLoading" class="flex items-center justify-center py-8">
+                    <div class="loading-animation">
+                        <div class="text-4xl mb-2">🎭</div>
+                        <p class="text-gray-600 dark:text-gray-300">Création de votre chibi 3D en cours...</p>
+                    </div>
+                </div>
+                <div id="generationResult" class="hidden text-center">
+                    <img id="generatedImage" class="max-w-full rounded-lg shadow-md mx-auto bounce-in">
+                    <div class="mt-4 flex justify-center space-x-4">
+                        <button id="downloadBtn" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-300">
+                            💾 Télécharger
+                        </button>
+                        <button id="newTransformBtn" class="bg-primary hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-300">
+                            🔄 Nouvelle transformation
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Examples Section -->
+        <div class="bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 rounded-2xl shadow-lg p-6 text-white">
+            <h2 class="text-2xl font-semibold mb-4">💡 Conseils pour de meilleurs résultats</h2>
+            <div class="grid md:grid-cols-2 gap-4 text-sm">
+                <div>
+                    <h3 class="font-semibold mb-2">✅ Photos recommandées:</h3>
+                    <ul class="space-y-1">
+                        <li>• Portraits avec visage bien visible</li>
+                        <li>• Éclairage clair et uniforme</li>
+                        <li>• Arrière-plan simple</li>
+                        <li>• Expression faciale claire</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-semibold mb-2">❌ À éviter:</h3>
+                    <ul class="space-y-1">
+                        <li>• Photos floues ou sombres</li>
+                        <li>• Visages partiellement cachés</li>
+                        <li>• Arrière-plans trop chargés</li>
+                        <li>• Images de très faible résolution</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dark mode detection
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+
+        let uploadedFile = null;
+
+        // Elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const originalImageContainer = document.getElementById('originalImageContainer');
+        const originalImage = document.getElementById('originalImage');
+        const transformBtn = document.getElementById('transformBtn');
+        const analysisSection = document.getElementById('analysisSection');
+        const analysisLoading = document.getElementById('analysisLoading');
+        const analysisResult = document.getElementById('analysisResult');
+        const generationSection = document.getElementById('generationSection');
+        const generationLoading = document.getElementById('generationLoading');
+        const generationResult = document.getElementById('generationResult');
+        const generatedImage = document.getElementById('generatedImage');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const newTransformBtn = document.getElementById('newTransformBtn');
+
+        // File upload handling
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            handleFile(e.dataTransfer.files[0]);
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            handleFile(e.target.files[0]);
+        });
+
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                alert('Veuillez sélectionner un fichier image valide.');
+                return;
+            }
+
+            uploadedFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                originalImage.src = e.target.result;
+                originalImageContainer.classList.remove('hidden');
+                transformBtn.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Transform button
+        transformBtn.addEventListener('click', async () => {
+            if (!uploadedFile) return;
+
+            // Show analysis section
+            analysisSection.classList.remove('hidden');
+            analysisLoading.classList.remove('hidden');
+            analysisResult.classList.add('hidden');
+
+            // Reset generation section
+            generationSection.classList.add('hidden');
+            generationLoading.classList.remove('hidden');
+            generationResult.classList.add('hidden');
+
+            try {
+                // Step 1: Analyze image with Claude
+                await window.Poe.sendUserMessage(
+                    "@Claude-Sonnet-4 Analysez cette photo et créez une description détaillée pour transformer cette personne en personnage anime chibi 3D. Incluez: les caractéristiques faciales, la couleur des cheveux et des yeux, l'expression, le style vestimentaire suggéré, et les éléments chibi spécifiques (grands yeux, proportions mignonnes, etc.). Donnez des détails précis pour la génération d'image.", 
+                    {
+                        attachments: [uploadedFile],
+                        handler: "analysis-handler",
+                        stream: true,
+                        openChat: false
+                    }
+                );
+            } catch (error) {
+                analysisLoading.innerHTML = `<p class="text-red-500">Erreur lors de l'analyse: ${error.message}</p>`;
+            }
+        });
+
+        // Register analysis handler
+        window.Poe.registerHandler("analysis-handler", async (result, context) => {
+            const msg = result.responses[0];
+            
+            if (msg.status === "error") {
+                analysisLoading.innerHTML = `<p class="text-red-500">Erreur: ${msg.statusText}</p>`;
+            } else if (msg.status === "incomplete") {
+                analysisLoading.classList.add('hidden');
+                analysisResult.classList.remove('hidden');
+                analysisResult.innerHTML = formatMarkdown(msg.content);
+            } else if (msg.status === "complete") {
+                analysisLoading.classList.add('hidden');
+                analysisResult.classList.remove('hidden');
+                analysisResult.innerHTML = formatMarkdown(msg.content);
+                
+                // Step 2: Generate chibi image
+                generationSection.classList.remove('hidden');
+                
+                try {
+                    const chibiPrompt = `3D anime chibi character based on this description: ${msg.content}. Style: cute 3D render, large eyes, small proportions, kawaii style, high quality 3D animation style, soft lighting, vibrant colors --aspect 1:1`;
+                    
+                    await window.Poe.sendUserMessage(
+                        `@GPT-Image-1 ${chibiPrompt}`,
+                        {
+                            handler: "generation-handler", 
+                            stream: false,
+                            openChat: false
+                        }
+                    );
+                } catch (error) {
+                    generationLoading.innerHTML = `<p class="text-red-500">Erreur lors de la génération: ${error.message}</p>`;
+                }
+            }
+        });
+
+        // Register generation handler
+        window.Poe.registerHandler("generation-handler", (result, context) => {
+            const msg = result.responses[0];
+            
+            if (msg.status === "error") {
+                generationLoading.innerHTML = `<p class="text-red-500">Erreur: ${msg.statusText}</p>`;
+            } else if (msg.status === "complete") {
+                if (msg.attachments && msg.attachments.length > 0) {
+                    const imageUrl = msg.attachments[0].url;
+                    generatedImage.src = imageUrl;
+                    generationLoading.classList.add('hidden');
+                    generationResult.classList.remove('hidden');
+                    
+                    // Setup download button
+                    downloadBtn.onclick = () => {
+                        const link = document.createElement('a');
+                        link.href = imageUrl;
+                        link.download = 'chibi-3d-transform.png';
+                        link.click();
+                    };
+                } else {
+                    generationLoading.innerHTML = `<p class="text-yellow-600">Aucune image générée. Veuillez réessayer.</p>`;
+                }
+            }
+        });
+
+        // New transform button
+        newTransformBtn.addEventListener('click', () => {
+            // Reset everything
+            uploadedFile = null;
+            originalImageContainer.classList.add('hidden');
+            transformBtn.classList.add('hidden');
+            analysisSection.classList.add('hidden');
+            generationSection.classList.add('hidden');
+            fileInput.value = '';
+        });
+
+        function formatMarkdown(text) {
+            // Simple markdown formatting
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>')
+                .replace(/^/, '<p>')
+                .replace(/$/, '</p>');
+        }
+    </script>
+</body>
+</html>
